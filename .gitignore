@@ -1,0 +1,7 @@
+config.env
+venv/
+__pycache__/
+*.pyc
+releases_data.json
+media/
+.DS_Store

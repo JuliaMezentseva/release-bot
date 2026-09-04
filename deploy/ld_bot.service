@@ -1,0 +1,15 @@
+[Unit]
+Description=L&D Release Notes Bot
+After=network.target
+
+[Service]
+Type=simple
+User=julia
+WorkingDirectory=/opt/ld_bot
+EnvironmentFile=/opt/ld_bot/config.env
+ExecStart=/opt/ld_bot/venv/bin/python bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дайджест</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f5f7;--surface:#fff;--hover:#f2f3f5;--active:#e9ebee;--border:#dfe2e8;
+  --t1:#0f1923;--t2:#4a5568;--t3:#a0aab8;
+  --tag-p-bg:#e8f0fe;--tag-p-t:#1a5fa8;
+  --tag-j-bg:#fce8d8;--tag-j-t:#9a4500;
+  --w:224px;--r:10px;--f:'Geologica',sans-serif
+}
+body{font-family:var(--f);background:var(--bg);color:var(--t1);display:flex;min-height:100vh;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+aside{width:var(--w);min-width:var(--w);background:var(--surface);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+aside::-webkit-scrollbar{width:0}
+.sb-sec{margin-top:18px}
+.sb-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);padding:0 18px;margin-bottom:4px}
+.ptoggle{display:flex;margin:4px 12px 0;background:var(--active);border-radius:8px;padding:3px;gap:2px}
+.ptoggle button{flex:1;border:none;background:transparent;border-radius:6px;padding:6px 0;font-family:var(--f);font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .15s}
+.ptoggle button.on{background:#111827;color:#fff;box-shadow:none}
+.nrow{display:flex;align-items:center;gap:8px;padding:5px 14px;font-size:13px;color:var(--t2);cursor:pointer;transition:background .1s;border-radius:6px;margin:1px 8px;user-select:none}
+.nrow:hover{background:var(--hover);color:var(--t1)}
+.nrow.on{background:#e8f0fe;color:#1a5fa8;font-weight:500}
+.nrow input[type=checkbox]{width:13px;height:13px;accent-color:#1a5fa8;cursor:pointer;flex-shrink:0}
+.nnum{margin-left:auto;font-size:11px;color:var(--t3)}
+.yr{display:flex;align-items:center;gap:6px;padding:5px 18px;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;user-select:none}
+.yr:hover{color:var(--t1)}
+.yra{font-size:9px;color:var(--t3);transition:transform .18s;display:inline-block}
+.yr.open .yra{transform:rotate(90deg)}
+.mlist{padding-left:8px}
+.mrow{display:flex;align-items:center;justify-content:space-between;padding:5px 14px 5px 20px;font-size:13px;color:var(--t2);cursor:pointer;transition:background .1s;border-radius:6px;margin:1px 8px}
+.mrow:hover{background:var(--hover);color:var(--t1)}
+.mrow.on{color:var(--t1);font-weight:600}
+.rel-sidebar{display:flex;flex-direction:column;gap:1px;padding:2px 8px 4px 26px}
+.rs-item{font-size:12px;color:var(--t3);padding:3px 10px;border-radius:5px;cursor:pointer;transition:all .12s}
+.rs-item:hover{background:var(--hover);color:var(--t2)}
+.rs-item.on{color:var(--t1);font-weight:600}
+.client-search{margin:4px 12px;position:relative}
+.client-search input{width:100%;border:1px solid var(--border);border-radius:6px;padding:5px 10px 5px 28px;font-family:var(--f);font-size:12px;color:var(--t1);background:var(--bg);outline:none;transition:border .12s}
+.client-search input:focus{border-color:#1a5fa8}
+.client-search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none}
+main{flex:1;padding:36px 48px;max-width:900px}
+.pt{font-size:26px;font-weight:700;color:var(--t1);letter-spacing:-.025em;margin-bottom:22px}
+.controls{display:flex;align-items:center;margin-bottom:24px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 16px}
+.ctrl-group{display:flex;align-items:center;gap:6px}
+.ctrl-label{font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;margin-right:4px}
+.ctrl-sep{width:1px;height:20px;background:var(--border);margin:0 14px}
+.ctrl-right{margin-left:auto}
+.seg{display:inline-flex;background:var(--active);border-radius:8px;padding:3px;gap:2px}
+.sb{padding:5px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--f);background:transparent;color:var(--t2);transition:all .15s;display:flex;align-items:center;gap:6px}
+.sb:hover{color:var(--t1)}
+.sb.on{background:#111827;color:#fff;font-weight:600;box-shadow:none}
+.tdot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.dp{background:#1a5fa8}.dj{background:#9a4500}
+.mttl{font-size:18px;font-weight:700;color:var(--t1);letter-spacing:-.02em;margin-bottom:12px;margin-top:28px}
+.mttl:first-of-type{margin-top:0}
+
+/* ── Карточки — оригинальный стиль сайта, без стрелок ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;transition:box-shadow .15s}
+.card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.chd{display:flex;align-items:center;padding:13px 20px;user-select:none}
+.cttl{font-size:16px;font-weight:600;color:var(--t1);flex:1;letter-spacing:-.01em}
+.cbody{display:block;padding:0}
+.card-head{padding:11px 20px;border-bottom:1px solid var(--border);background:#fff}
+.card-inner{padding:12px 20px 14px}
+.bvl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin-bottom:3px}
+.bvt{font-size:13px;color:var(--t2);font-weight:500;line-height:1.5}
+.media{background:var(--hover);border:1px dashed var(--border);border-radius:6px;height:160px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:var(--t3);font-size:12px}
+.media.empty{display:none}
+.cdesc{font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:10px}
+.cfoot{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tmod{font-size:11px;color:var(--t2);background:var(--active);padding:4px 12px;border-radius:20px;font-weight:500;border:1px solid var(--border)}
+.tclient{font-size:11px;color:var(--t2);background:#fff;padding:4px 12px;border-radius:20px;font-weight:500;border:1.5px solid var(--border)}
+.ttype{font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px}
+.ttype.prod{background:var(--tag-p-bg);color:var(--tag-p-t)}
+.ttype.proj{background:var(--tag-j-bg);color:var(--tag-j-t)}
+.tlink{margin-left:auto;font-size:12px;color:var(--t3);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:3px}
+.tlink:hover{color:var(--t1)}
+.ccol{display:none;padding:0 20px 12px}
+@media(max-width:700px){aside{display:none}main{padding:20px 16px}}
+</style>
+</head>
+<body>
+<aside>
+  <div class="sb-sec" style="margin-top:8px">
+    <div class="sb-lbl">Продукт</div>
+    <div class="ptoggle">
+      <button data-prod="all" onclick="sp('all',this)">Все</button>
+      <button data-prod="ld" class="on" onclick="sp('ld',this)">L&D</button>
+      <button data-prod="podbor" onclick="sp('podbor',this)">Подбор</button>
+    </div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Модули</div>
+    <label class="nrow on" data-prod="all"><input type="checkbox" checked> все модули <span class="nnum">12</span></label>
+    <label class="nrow" data-prod="ld"><input type="checkbox"> Управление эффективностью <span class="nnum">3</span></label>
+    <label class="nrow" data-prod="ld"><input type="checkbox"> Карьера <span class="nnum">2</span></label>
+    <label class="nrow" data-prod="ld"><input type="checkbox"> Core <span class="nnum">2</span></label>
+    <label class="nrow" data-prod="ld"><input type="checkbox"> Обучение <span class="nnum">2</span></label>
+    <label class="nrow" data-prod="ld"><input type="checkbox"> Оценка 360 <span class="nnum">1</span></label>
+    <label class="nrow" data-prod="ld"><input type="checkbox"> Цели и OKR <span class="nnum">2</span></label>
+    <label class="nrow" data-prod="podbor"><input type="checkbox"> ATS Core <span class="nnum">4</span></label>
+    <label class="nrow" data-prod="podbor"><input type="checkbox"> Телефония <span class="nnum">2</span></label>
+    <label class="nrow" data-prod="podbor"><input type="checkbox"> Отчёты <span class="nnum">3</span></label>
+    <label class="nrow" data-prod="podbor"><input type="checkbox"> Конфигуратор <span class="nnum">1</span></label>
+    <label class="nrow" data-prod="podbor"><input type="checkbox"> Open API <span class="nnum">2</span></label>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Период</div>
+    <!-- SIDEBAR_PLACEHOLDER -->
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Клиенты</div>
+    <div class="client-search">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="5" cy="5" r="3.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 8l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <input type="text" placeholder="Поиск..." oninput="filterClients(this.value)">
+    </div>
+    <label class="nrow on" id="client-all"><input type="checkbox" checked onclick="selectClient('all',this.parentElement)"> все клиенты <span class="nnum">4</span></label>
+    <label class="nrow client-item"><input type="checkbox" onclick="selectClient('hh',this.parentElement)"> HeadHunter <span class="nnum">3</span></label>
+    <label class="nrow client-item"><input type="checkbox" onclick="selectClient('юниРусь',this.parentElement)"> ЮниРусь <span class="nnum">3</span></label>
+    <label class="nrow client-item"><input type="checkbox" onclick="selectClient('nestle',this.parentElement)"> Nestle <span class="nnum">3</span></label>
+    <label class="nrow client-item"><input type="checkbox" onclick="selectClient('skillaz',this.parentElement)"> Skillaz <span class="nnum">2</span></label>
+  </div>
+</aside>
+
+<main>
+  <div class="pt" id="main-title">Обновления L&D</div>
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Тип фичи</span>
+      <div class="seg">
+        <button class="sb on" onclick="st('all',this)">Все</button>
+        <button class="sb" onclick="st('product',this)">Продуктовые</button>
+        <button class="sb" onclick="st('project',this)">Проектные</button>
+      </div>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group ctrl-right">
+      <span class="ctrl-label">Вид</span>
+      <div class="seg">
+        <button class="sb on" onclick="sv('exp',this)">Развёрнутый</button>
+        <button class="sb" onclick="sv('col',this)">Свёрнутый</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARDS_PLACEHOLDER -->
+
+</main>
+
+<script>
+let v='exp', curProduct='ld', curType='all';
+
+function applyFilters(){
+  document.querySelectorAll('.card').forEach(c=>{
+    const typeOk=curType==='all'||c.dataset.type===curType;
+    const prodOk=curProduct==='all'||c.dataset.product===curProduct;
+    c.style.display=(typeOk&&prodOk)?'':'none';
+  });
+}
+
+function sp(product,btn){
+  curProduct=product;
+  const titles={'all':'Обновления','ld':'Обновления L&D','podbor':'Обновления Подбор'};
+  document.getElementById('main-title').textContent=titles[product]||'Обновления';
+  document.querySelectorAll('.ptoggle button').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  // Show/hide modules by product
+  document.querySelectorAll('.nrow[data-prod]').forEach(row=>{
+    const rp=row.dataset.prod;
+    row.style.display=(rp==='all'||product==='all'||rp===product)?'':'none';
+  });
+  applyFilters();
+}
+
+function st(t,btn){
+  curType=t;
+  btn.closest('.seg').querySelectorAll('.sb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  applyFilters();
+}
+
+function sv(nv,btn){
+  v=nv;
+  btn.closest('.seg').querySelectorAll('.sb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.card').forEach(c=>{
+    const body=c.querySelector('.cbody'),col=c.querySelector('.ccol');
+    if(nv==='exp'){body.style.display='';col.style.display='none';}
+    else{body.style.display='none';col.style.display='block';}
+  });
+}
+
+function ty(r,id){const l=document.getElementById(id),o=r.classList.contains('open');r.classList.toggle('open',!o);l.style.display=o?'none':'';}
+function sm(r){document.querySelectorAll('.mrow').forEach(x=>x.classList.remove('on'));r.classList.add('on');}
+function sr(el){document.querySelectorAll('.rs-item').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
+function filterClients(val){document.querySelectorAll('.client-item').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(val.toLowerCase())?'':'none';});}
+function selectClient(client,el){document.querySelectorAll('#client-all,.client-item').forEach(r=>r.classList.remove('on'));el.classList.add('on');}
+
+// Check URL param for product
+const urlParams = new URLSearchParams(window.location.search);
+const urlProd = urlParams.get('product');
+if(urlProd && ['all','ld','podbor'].includes(urlProd)){
+  sp(urlProd, document.querySelector(`.ptoggle button[data-prod="${urlProd}"]`) || document.querySelector('.ptoggle button.on'));
+} else {
+  applyFilters();
+}
+</script>
+</body>
+</html>

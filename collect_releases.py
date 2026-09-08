@@ -5,7 +5,8 @@
 те, что уже есть в releases_data.json, и складывает остальные как
 черновики: на сайте они не показываются, пока их не опубликуют.
 
-В канал ничего не пишет — уведомление уходит в момент публикации.
+По каждому собранному черновику шлёт уведомление в TG_DRAFT_CHAT_ID
+(по умолчанию — тот же канал, что и публикации).
 
 Запускается таймером ld_collect.timer, руками:
     /opt/ld_bot/venv/bin/python /opt/ld_bot/collect_releases.py
@@ -19,9 +20,11 @@ from pathlib import Path
 
 sys.path.insert(0, '/opt/ld_bot')
 
+from telegram import Bot
+
 from config import Config
 from deepseek import generate_notes
-from publisher import DATA_FILE, publish_to_site
+from publisher import DATA_FILE, notify_draft, publish_to_site
 from tracker import get_release_tasks, get_releases
 
 logging.basicConfig(
@@ -79,6 +82,18 @@ async def collect() -> int:
             )
             collected += 1
             logger.info(f"{release['id']}: черновик создан, карточек {len(tasks)}")
+
+            # Черновик уже записан: не даём упавшему уведомлению
+            # заставить собрать релиз повторно
+            try:
+                await notify_draft(
+                    Bot(token=Config.TG_BOT_TOKEN),
+                    Config.TG_DRAFT_CHAT_ID,
+                    release['id'], release['title'],
+                    tasks, release['date_str'],
+                )
+            except Exception as e:
+                logger.error(f"{release['id']}: уведомление не ушло: {e}")
 
     return collected
 

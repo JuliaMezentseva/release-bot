@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from html import escape
 from datetime import datetime
 from pathlib import Path
 from telegram import Bot
@@ -428,6 +429,30 @@ def build_sidebar_html(releases: list) -> str:
     return html
 
 
+async def notify_draft(bot: Bot, chat_id: str, release: str, release_title: str,
+                       tasks: list, release_date: str):
+    """
+    Сообщить, что собран черновик релиза.
+
+    Ссылку не даём намеренно: черновик на сайте не отображается, пока его
+    не опубликуют, и вести читателя было бы некуда.
+    """
+    date_ru = format_date_ru(release_date)
+
+    feature_lines = ''
+    for task in tasks:
+        feature_lines += f"\n• {escape(task.get('title', ''))}"
+
+    message = (
+        f"📝 <b>Черновик релиза от {escape(date_ru)}</b>\n"
+        f"{escape(release)} — {escape(release_title)}\n\n"
+        f"<b>Что вошло ({len(tasks)}):</b>{feature_lines}\n\n"
+        f"Проверьте текст и добавьте медиа — на сайте появится после публикации."
+    )
+
+    await bot.send_message(chat_id=chat_id, text=message, parse_mode='HTML')
+
+
 async def publish_to_channel(bot: Bot, channel_id: str, tasks: list, release_date: str, page_url: str):
     date_ru = format_date_ru(release_date)
 
@@ -436,16 +461,18 @@ async def publish_to_channel(bot: Bot, channel_id: str, tasks: list, release_dat
         title = task.get('title', '')
         if 'release' in title.lower() or 'Release' in title:
             continue
-        feature_lines += f"\n• {title}"
+        feature_lines += f"\n• {escape(title)}"
 
+    # HTML, а не Markdown: заголовки задач часто начинаются с [Story] и
+    # содержат подчёркивания, на которых Markdown у Telegram падает
     message = (
-        f"🚀 *Новый релиз от {date_ru}*\n\n"
-        f"*Что нового?*{feature_lines}\n\n"
-        f"📖 Подробности по ссылке: {page_url}"
+        f"🚀 <b>Новый релиз от {escape(date_ru)}</b>\n\n"
+        f"<b>Что нового?</b>{feature_lines}\n\n"
+        f"📖 Подробности по ссылке: {escape(page_url)}"
     )
 
     await bot.send_message(
         chat_id=channel_id,
         text=message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )

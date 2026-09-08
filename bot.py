@@ -1,5 +1,6 @@
 import logging
 import os
+from html import escape
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
@@ -299,10 +300,10 @@ async def media_pick_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.edit_message_text(
-        f"📎 Отправь скрин или видео для фичи:\n\n*{title}*\n\n"
+        f"📎 Отправь скрин или видео для фичи:\n\n<b>{escape(title)}</b>\n\n"
         f"Просто пришли фото или файл в этот чат.",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     return WAIT_MEDIA
 
@@ -346,10 +347,10 @@ async def receive_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        f"✅ Медиа добавлено к фиче *{title}*!\n\n"
+        f"✅ Медиа добавлено к фиче <b>{escape(title)}</b>!\n\n"
         f"Что дальше?",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     return WAIT_MEDIA
 

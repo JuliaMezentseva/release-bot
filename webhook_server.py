@@ -1,6 +1,11 @@
 import asyncio
 import logging
 import json
+import re
+import secrets
+import time
+from datetime import datetime
+from html import escape
 from fastapi import FastAPI, Request, HTTPException
 from pathlib import Path
 import sys
@@ -10,6 +15,7 @@ from tracker import get_release_tasks
 from deepseek import generate_notes
 from publisher import publish_to_site
 from config import Config
+from store import DEMO_FILE, load_json, locked, save_json
 from telegram import Bot
 
 logging.basicConfig(
@@ -22,6 +28,23 @@ app = FastAPI()
 
 # Track releases being processed to avoid duplicates
 processing = set()
+
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+# Публичный endpoint без авторизации: ограничиваем частоту по IP, чтобы
+# им не заспамили Telegram и demo_requests.json
+DEMO_RATE_LIMIT = 5
+DEMO_RATE_WINDOW = 3600
+demo_request_log = {}  # ip -> [timestamps]
+
+
+def demo_rate_limited(ip: str) -> bool:
+    now = time.time()
+    hits = [t for t in demo_request_log.get(ip, []) if now - t < DEMO_RATE_WINDOW]
+    demo_request_log[ip] = hits
+    if len(hits) >= DEMO_RATE_LIMIT:
+        return True
+    hits.append(now)
+    return False
 
 
 async def get_issue_info(issue_key: str) -> dict:
@@ -282,4 +305,82 @@ async def tracker_webhook(request: Request):
 
 @app.get("/webhook/health")
 async def health():
+    return {"status": "ok"}
+
+
+MAX_CARDS_PER_REQUEST = 20
+MAX_SLOTS_PER_REQUEST = 10
+MAX_FIELD_LEN = 200
+
+
+@app.post("/webhook/demo-request")
+async def demo_request(request: Request):
+    """
+    Заявка на демо с сайта дайджеста. Публичный эндпоинт — им может
+    воспользоваться любой посетитель, поэтому валидация и лимит частоты
+    здесь строже, чем у остального API.
+    """
+    ip = request.headers.get('x-real-ip') or (request.client.host if request.client else 'unknown')
+    if demo_rate_limited(ip):
+        raise HTTPException(status_code=429, detail="Слишком много заявок, попробуйте позже")
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    company = str(body.get('company') or '').strip()[:MAX_FIELD_LEN]
+    email = str(body.get('email') or '').strip()[:MAX_FIELD_LEN]
+    cards = body.get('cards') or []
+    slots = body.get('slots') or []
+
+    if not company:
+        raise HTTPException(status_code=400, detail="Укажите компанию")
+    if not email or not EMAIL_RE.match(email):
+        raise HTTPException(status_code=400, detail="Некорректная почта")
+    if not isinstance(cards, list) or not cards:
+        raise HTTPException(status_code=400, detail="Не выбрано ни одной фичи")
+    if not isinstance(slots, list):
+        raise HTTPException(status_code=400, detail="slots должен быть списком")
+
+    cards = [
+        {
+            'id': str(c.get('id', ''))[:MAX_FIELD_LEN],
+            'title': str(c.get('title', ''))[:MAX_FIELD_LEN],
+        }
+        for c in cards[:MAX_CARDS_PER_REQUEST] if isinstance(c, dict)
+    ]
+    slots = [str(s)[:MAX_FIELD_LEN] for s in slots[:MAX_SLOTS_PER_REQUEST]]
+
+    entry = {
+        'id': secrets.token_hex(6),
+        'created_at': datetime.now().isoformat(timespec='seconds'),
+        'company': company,
+        'email': email,
+        'cards': cards,
+        'slots': slots,
+    }
+
+    with locked(DEMO_FILE):
+        requests_ = load_json(DEMO_FILE, [])
+        requests_.append(entry)
+        save_json(DEMO_FILE, requests_)
+
+    try:
+        feature_lines = ''.join(f"\n• {escape(c['title'])}" for c in cards)
+        slot_lines = ''.join(f"\n• {escape(s)}" for s in slots) or '\nне указаны'
+        message = (
+            f"🎯 <b>Заявка на демо</b>\n\n"
+            f"<b>Компания:</b> {escape(company)}\n"
+            f"<b>Почта:</b> {escape(email)}\n\n"
+            f"<b>Интересуют фичи ({len(cards)}):</b>{feature_lines}\n\n"
+            f"<b>Удобное время:</b>{slot_lines}"
+        )
+        bot = Bot(token=Config.TG_BOT_TOKEN)
+        await bot.send_message(chat_id=Config.TG_LEADS_CHAT_ID, text=message, parse_mode='HTML')
+    except Exception as e:
+        # Заявка уже на диске — потеря уведомления не должна выглядеть как
+        # отказ для того, кто её оставил
+        logger.error(f"Не удалось отправить уведомление о заявке на демо: {e}")
+
     return {"status": "ok"}

@@ -7,6 +7,11 @@ class Config:
     TG_CHANNEL_ID = os.getenv('TG_CHANNEL_ID', '')
     # Куда уходят уведомления о черновиках. Пусто — в тот же канал
     TG_DRAFT_CHAT_ID = os.getenv('TG_DRAFT_CHAT_ID', '') or os.getenv('TG_CHANNEL_ID', '')
+    # Куда уходят заявки на демо. Пусто — в тот же канал
+    TG_LEADS_CHAT_ID = os.getenv('TG_LEADS_CHAT_ID', '') or os.getenv('TG_CHANNEL_ID', '')
+
+    # Admin panel
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', '')
 
     # Yandex Tracker
     YT_TOKEN = os.getenv('YT_TOKEN', '')

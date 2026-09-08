@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f7f8;--surface:#fff;--border:#e5e5e9;--hover:#f0f0f3;
+  --ink:#16171a;--ink2:#63656c;--ink3:#a3a4ab;
+  --brand:#ffcc00;--brand-ink:#16171a;
+  --danger:#dc2626;--danger-bg:#fef2f2;
+  --ok:#15803d;
+  --r:10px;--f:'Geologica',sans-serif;
+}
+body{font-family:var(--f);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ── Общие элементы ── */
+.btn{font-family:var(--f);font-size:13px;font-weight:600;border-radius:8px;padding:8px 16px;border:1px solid transparent;cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:6px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn-brand{background:var(--brand);color:var(--brand-ink)}
+.btn-brand:hover:not(:disabled){filter:brightness(.96)}
+.btn-ghost{background:transparent;color:var(--ink2);border-color:var(--border)}
+.btn-ghost:hover:not(:disabled){background:var(--hover);color:var(--ink)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.link-btn{background:none;border:none;font-family:var(--f);font-size:12px;font-weight:600;color:var(--ink2);cursor:pointer;padding:4px 6px;border-radius:6px}
+.link-btn:hover{background:var(--hover);color:var(--ink)}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--ink3);padding:5px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;transition:all .12s}
+.icon-btn:hover{background:var(--danger-bg);color:var(--danger)}
+
+/* ── Каркас ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.tabs{display:flex;gap:4px;padding:14px 28px 0;background:var(--surface);border-bottom:1px solid var(--border)}
+.tab{font-family:var(--f);background:none;border:none;border-bottom:2px solid transparent;padding:8px 6px 12px;margin-right:20px;font-size:14px;font-weight:500;color:var(--ink2);cursor:pointer;display:flex;align-items:center;gap:7px;transition:color .12s}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);font-weight:700;border-bottom-color:var(--brand)}
+.tab-badge{background:var(--border);color:var(--ink2);font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;min-width:18px;text-align:center}
+.tab-badge.has{background:var(--brand);color:var(--brand-ink)}
+main{max-width:920px;margin:0 auto;padding:24px 28px 80px}
+.empty-state{text-align:center;color:var(--ink3);padding:60px 20px;font-size:14px}
+
+/* ── Запись релиза ── */
+.entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+.entry-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.entry-date{font-size:15px;font-weight:700}
+.entry-meta{font-size:12px;color:var(--ink3)}
+.entry-actions{margin-left:auto;display:flex;align-items:center;gap:6px}
+.entry-body{padding:14px 18px}
+
+/* ── Карточка фичи (редактируемая) ── */
+.card-edit{border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;background:var(--bg)}
+.card-edit:last-child{margin-bottom:0}
+.card-edit-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.card-edit-head input[type=checkbox]{width:16px;height:16px;margin-top:4px;accent-color:var(--ink);cursor:pointer;flex-shrink:0}
+.title-input{flex:1;font-family:var(--f);font-size:15px;font-weight:600;border:1px solid transparent;background:transparent;border-radius:6px;padding:5px 8px;color:var(--ink);width:100%}
+.title-input:hover{background:var(--hover)}
+.title-input:focus{outline:none;border-color:var(--border);background:var(--surface)}
+.field{margin-bottom:8px}
+.field-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.save-status{font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink3);opacity:0;transition:opacity .2s}
+.save-status.show{opacity:1}
+.save-status.ok{color:var(--ok)}
+.save-status.err{color:var(--danger)}
+.field-textarea,.field-input{width:100%;font-family:var(--f);font-size:13px;color:var(--ink);border:1px solid transparent;background:transparent;border-radius:6px;padding:6px 8px;resize:none;overflow:hidden;line-height:1.5}
+.field-textarea:hover,.field-input:hover{background:var(--hover)}
+.field-textarea:focus,.field-input:focus{outline:none;border-color:var(--border);background:var(--surface)}
+
+/* ── Теги ── */
+.tags-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);color:var(--ink2);font-size:12px;font-weight:500;padding:4px 6px 4px 12px;border-radius:20px}
+.chip button{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:14px;line-height:1;padding:2px;border-radius:50%;display:flex}
+.chip button:hover{background:var(--danger-bg);color:var(--danger)}
+.tag-input{border:1px dashed var(--border);background:transparent;border-radius:20px;padding:4px 12px;font-family:var(--f);font-size:12px;color:var(--ink2);width:110px}
+.tag-input:focus{outline:none;border-color:var(--ink3);width:150px}
+
+/* ── Медиа ── */
+.media-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.media-thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--surface)}
+.media-thumb img,.media-thumb video{width:100%;height:100%;object-fit:cover}
+.media-thumb .rm{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.media-thumb .rm:hover{background:var(--danger)}
+.media-thumb.video::after{content:'▶';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:rgba(0,0,0,.25);pointer-events:none}
+.media-add{width:72px;height:72px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;color:var(--ink3);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.media-add:hover{border-color:var(--ink3);color:var(--ink2)}
+
+/* ── Просмотр опубликованного (только чтение) ── */
+.card-view{border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+.card-view:last-child{margin-bottom:0}
+.card-view-title{font-size:15px;font-weight:600;margin-bottom:8px}
+.card-view .field-label{margin-top:8px}
+.card-view-text{font-size:13px;color:var(--ink2);line-height:1.6}
+
+.tlink{font-size:12px;color:var(--ink3);text-decoration:none}
+.tlink:hover{color:var(--ink)}
+.entry-footer{display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--border);background:var(--bg)}
+
+/* ── Прочее ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;border-left:3px solid var(--brand);font-size:13px;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;transform:translateY(8px);pointer-events:none;transition:all .2s}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast a{color:var(--brand)}
+
+/* ── Логин ── */
+.login-body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);font-family:var(--f)}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:36px 32px;width:320px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.05)}
+.login-logo{font-size:18px;font-weight:700;text-align:center}
+.login-sub{font-size:13px;color:var(--ink2);text-align:center;margin-bottom:8px}
+.login-input{font-family:var(--f);font-size:14px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
+.login-input:focus{outline:none;border-color:var(--ink3)}
+.login-btn{justify-content:center;margin-top:4px}
+.login-error{color:var(--danger);font-size:12px;text-align:center;min-height:16px}
+
+@media(max-width:640px){
+  .topbar,.tabs{padding-left:16px;padding-right:16px}
+  main{padding:16px 16px 60px}
+}

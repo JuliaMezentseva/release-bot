@@ -1,15 +1,12 @@
-import json
 import os
 import re
+import secrets
 from html import escape
 from datetime import datetime
 from pathlib import Path
 from telegram import Bot
 from config import Config
-
-
-SITE_DIR = Path(Config.SITE_DIR)
-DATA_FILE = SITE_DIR / "releases_data.json"
+from store import DATA_FILE, MEDIA_DIR, SITE_DIR, load_releases, locked, save_releases
 
 
 def format_date_ru(date_str: str) -> str:
@@ -69,12 +66,18 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
     что релиз уже забран.
     """
 
-    if DATA_FILE.exists():
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            all_releases = json.load(f)
-    else:
-        all_releases = []
+    with locked(DATA_FILE):
+        all_releases = load_releases()
+        page_url = _merge_tasks_into_releases(
+            all_releases, tasks, release_date, generated_tasks, media, status, release
+        )
+        save_releases(all_releases)
+        rebuild_html(all_releases)
+    return page_url
 
+
+def _merge_tasks_into_releases(all_releases: list, tasks: list, release_date: str,
+                               generated_tasks: dict, media: dict, status: str, release: str) -> str:
     # Задача несёт дату своего релиза, поэтому одна публикация может лечь
     # под несколько дат: задачи разных релизов не должны слипаться в одну.
     cards = []
@@ -114,6 +117,7 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
             existing['cards'].extend(by_date[card_date])
         else:
             all_releases.insert(0, {
+                'id': secrets.token_hex(6),
                 'date': card_date,
                 'date_ru': format_date_ru(card_date),
                 'status': status,
@@ -123,23 +127,67 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
 
     all_releases.sort(key=lambda r: date_sort_key(r.get('date', '')), reverse=True)
 
-    SITE_DIR.mkdir(parents=True, exist_ok=True)
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(all_releases, f, ensure_ascii=False, indent=2)
+    return product_url(cards)
 
-    rebuild_html(all_releases)
 
-    # Determine product from cards
+def product_url(cards: list) -> str:
+    """Ссылка на дайджест с открытой вкладкой того продукта, которого в карточках больше"""
     prod_key = 'ld'
     if cards:
         products = [card_product(c) for c in cards]
-        ld_count = products.count('ld')
-        podbor_count = products.count('podbor')
-        if podbor_count > ld_count:
+        if products.count('podbor') > products.count('ld'):
             prod_key = 'podbor'
+    return f"{Config.SITE_URL}?product={prod_key}"
 
-    page_url = f"{Config.SITE_URL}?product={prod_key}"
-    return page_url
+
+# Расширение — из content-type, а не из имени файла: клиент может прислать
+# что угодно в качестве имени, а type="image/png" подделать сложнее и не
+# нужно — доступ к загрузке только у авторизованных админов
+MEDIA_CONTENT_TYPES = {
+    'image/jpeg': ('photo', 'jpg'),
+    'image/png': ('photo', 'png'),
+    'image/gif': ('photo', 'gif'),
+    'image/webp': ('photo', 'webp'),
+    'video/mp4': ('video', 'mp4'),
+    'video/webm': ('video', 'webm'),
+    'video/quicktime': ('video', 'mov'),
+}
+MAX_MEDIA_BYTES = {'photo': 8 * 1024 * 1024, 'video': 100 * 1024 * 1024}
+
+
+def save_media_upload(card_id, content_type: str, data: bytes) -> dict:
+    """
+    Сохранить загруженный файл в MEDIA_DIR и вернуть запись для card['media'].
+
+    Имя файла — случайное, не из присланного клиентом: иначе можно было бы
+    просунуть путь вида ../../ и переписать произвольный файл на диске.
+    """
+    kind = MEDIA_CONTENT_TYPES.get(content_type)
+    if not kind:
+        raise ValueError(f'Неподдерживаемый тип файла: {content_type}')
+    media_type, ext = kind
+
+    if len(data) > MAX_MEDIA_BYTES[media_type]:
+        limit_mb = MAX_MEDIA_BYTES[media_type] // (1024 * 1024)
+        raise ValueError(f'Файл больше {limit_mb} МБ')
+
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    fname = f"{card_id}_{secrets.token_hex(4)}.{ext}"
+    (MEDIA_DIR / fname).write_bytes(data)
+
+    return {'type': media_type, 'local_path': f"media/{fname}"}
+
+
+def delete_media_file(local_path: str):
+    """Best-effort удаление файла с диска — отсутствие не считаем ошибкой"""
+    if not local_path:
+        return
+    path = SITE_DIR / local_path
+    try:
+        if path.is_relative_to(MEDIA_DIR):
+            path.unlink(missing_ok=True)
+    except (OSError, ValueError):
+        pass
 
 
 def extract_from_md(md_content: str, task_title: str) -> tuple[str, str]:
@@ -304,6 +352,7 @@ def build_cards_html(releases: list) -> str:
     }
 
     SVG_LINK = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="margin-right:3px"><path d="M1 9L9 1M9 1H3M9 1V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    STAR_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
 
     for month_key, cards in by_month.items():
         try:
@@ -316,7 +365,16 @@ def build_cards_html(releases: list) -> str:
 
         cards_inner = ''
         for card in cards:
-            client_tag = f'<span class="tclient">{card["client"]}</span>' if card.get('client') else ''
+            # Title/business_value/description/client приходят либо от DeepSeek,
+            # либо (после появления админки) вписаны руками — оба источника не
+            # доверенные для верстки, экранируем перед вставкой в HTML
+            title = escape(card.get('title', ''))
+            business_value = escape(card.get('business_value', ''))
+            description = escape(card.get('description', ''))
+            client_name = escape(card['client']) if card.get('client') else ''
+            url = escape(card['url'], quote=True)
+
+            client_tag = f'<span class="tclient">{client_name}</span>' if client_name else ''
             type_class = 'prod' if card['type'] == 'product' else 'proj'
             type_label = 'Продукт' if card['type'] == 'product' else 'Проект'
 
@@ -324,41 +382,35 @@ def build_cards_html(releases: list) -> str:
 
             categories = card_categories(card)
             mods_html = ''.join(
-                f'<span class="tmod">{category_label(c)}</span>' for c in categories
+                f'<span class="tmod">{escape(category_label(c))}</span>' for c in categories
             )
             mods_key = ' '.join(category_key(c) for c in categories) or 'none'
             prod_key = card_product(card)
+            fav_id = escape(str(card['id']), quote=True)
 
-            # Build media HTML
-            card_media = card.get('media', [])
-            if card_media:
-                first = card_media[0]
-                media_path = first.get('local_path', '')
-                if first['type'] == 'photo':
-                    media_html = f'<div class="media"><img src="/{media_path}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;" /></div>'
-                elif first['type'] == 'video':
-                    media_html = f'<div class="media"><video src="/{media_path}" controls style="max-width:100%;max-height:100%;border-radius:4px;"></video></div>'
-                else:
-                    media_html = '<div class="media empty"></div>'
-            else:
-                media_html = '<div class="media empty"></div>'
+            media_html = build_media_gallery_html(card.get('media', []))
 
             cards_inner += f"""
-    <div class="card" data-type="{card['type']}" data-product="{prod_key}" data-client="{client_key}" data-mod="{mods_key}">
-      <div class="chd"><span class="cttl">{card['title']}</span></div>
+    <div class="card" data-id="{fav_id}" data-type="{card['type']}" data-product="{prod_key}" data-client="{client_key}" data-mod="{mods_key}">
+      <div class="chd">
+        <input type="checkbox" class="card-select" data-id="{fav_id}">
+        <span class="cttl">{title}</span>
+        <button class="favbtn" onclick="toggleFav('{fav_id}',this)" title="В избранное" aria-label="В избранное">{STAR_SVG}</button>
+      </div>
       <div class="cbody">
         <div class="card-head">
           <div class="bvl">Бизнес-ценность</div>
-          <div class="bvt">{card.get('business_value', '')}</div>
+          <div class="bvt">{business_value}</div>
         </div>
         <div class="card-inner">
           {media_html}
-          <div class="cdesc">{card.get('description', '')}</div>
+          <div class="cdesc">{description}</div>
           <div class="cfoot">
             {mods_html}
             <span class="ttype {type_class}">{type_label}</span>
             {client_tag}
-            <a href="{card['url']}" target="_blank" class="tlink">{SVG_LINK}Открыть в ЯТ</a>
+            <a href="{url}" target="_blank" class="tlink">{SVG_LINK}Открыть в ЯТ</a>
+            <button class="demobtn" onclick="requestDemo('{fav_id}')">Запросить демо</button>
           </div>
         </div>
       </div>
@@ -367,7 +419,8 @@ def build_cards_html(releases: list) -> str:
           {mods_html}
           <span class="ttype {type_class}">{type_label}</span>
           {client_tag}
-          <a href="{card['url']}" target="_blank" class="tlink">↗ ЯТ</a>
+          <a href="{url}" target="_blank" class="tlink">↗ ЯТ</a>
+          <button class="demobtn" onclick="requestDemo('{fav_id}')">Запросить демо</button>
         </div>
       </div>
     </div>"""
@@ -379,6 +432,28 @@ def build_cards_html(releases: list) -> str:
   </div>""")
 
     return '\n'.join(html_parts)
+
+
+def build_media_gallery_html(card_media: list) -> str:
+    """
+    Галерея всех медиа карточки. Раньше показывался только первый файл —
+    в админке можно добавить сколько угодно, все должны быть видны.
+    """
+    if not card_media:
+        return '<div class="media empty"></div>'
+
+    items = ''
+    for m in card_media:
+        path = escape(m.get('local_path', ''), quote=True)
+        if m.get('type') == 'photo':
+            items += f'<img src="/{path}" loading="lazy" />'
+        elif m.get('type') == 'video':
+            items += f'<video src="/{path}" controls></video>'
+    if not items:
+        return '<div class="media empty"></div>'
+
+    cls = 'media' if len(card_media) == 1 else 'media gallery'
+    return f'<div class="{cls}">{items}</div>'
 
 
 def build_sidebar_html(releases: list) -> str:

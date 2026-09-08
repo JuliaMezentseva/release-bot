@@ -1,0 +1,15 @@
+[Unit]
+Description=L&D Release Notes — Admin Panel
+After=network.target
+
+[Service]
+Type=simple
+User=julia
+WorkingDirectory=/opt/ld_bot
+EnvironmentFile=/opt/ld_bot/config.env
+ExecStart=/opt/ld_bot/venv/bin/uvicorn admin_server:app --host 127.0.0.1 --port 8002
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

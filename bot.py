@@ -1,6 +1,7 @@
 import logging
 import os
 from html import escape
+from pathlib import Path
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
@@ -8,7 +9,7 @@ from telegram.ext import (
 )
 from tracker import get_releases, get_release_tasks
 from deepseek import generate_notes
-from publisher import publish_to_site, publish_to_channel
+from publisher import publish_to_site, notify_draft
 from config import Config
 
 logging.basicConfig(
@@ -396,7 +397,7 @@ async def do_generate_notes(query, context):
         md_file.name = f'release_notes_draft_{release_date}.md'
 
         keyboard = [
-            [InlineKeyboardButton("✅ Опубликовать", callback_data="publish")],
+            [InlineKeyboardButton("✅ Отправить в черновики", callback_data="publish")],
             [InlineKeyboardButton("📎 Загрузить с правками", callback_data="wait_corrections")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -407,7 +408,7 @@ async def do_generate_notes(query, context):
             caption=(
                 "📄 *Черновик Release Notes готов!*\n\n"
                 "Скачай файл, внеси правки если нужно.\n\n"
-                "• Нажми *Опубликовать* если всё ок\n"
+                "• Нажми *Отправить в черновики* если всё ок — дальше правишь и публикуешь в админке\n"
                 "• Или *Загрузить с правками* — пришли исправленный файл"
             ),
             reply_markup=reply_markup,
@@ -442,10 +443,10 @@ async def receive_corrected_file(update: Update, context: ContextTypes.DEFAULT_T
     md_content = content.decode('utf-8')
     context.user_data['md_content'] = md_content
 
-    keyboard = [[InlineKeyboardButton("✅ Опубликовать", callback_data="publish")]]
+    keyboard = [[InlineKeyboardButton("✅ Отправить в черновики", callback_data="publish")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "✅ Файл получен! Нажми *Опубликовать* чтобы разместить на сайте и в канале.",
+        "✅ Файл получен! Нажми *Отправить в черновики* — дальше правишь и публикуешь в админке.",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -453,19 +454,26 @@ async def receive_corrected_file(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def publish_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Собрать черновик и отправить в админку — не публиковать напрямую.
+
+    Живую публикацию и пост в канал теперь всегда делает админ через
+    веб-интерфейс: так у любого источника черновика (бот, ежедневный сбор)
+    один и тот же путь на сайт.
+    """
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("🚀 Публикую Release Notes...")
+    await query.message.reply_text("📝 Формирую черновик...")
 
     md_content = context.user_data['md_content']
     release_date = context.user_data['release_date']
     selected_tasks = context.user_data['selected_tasks_list']
     media = context.user_data.get('media', {})
+    # Ключ для дедупликации в ежедневном сборщике: несколько релизов через
+    # запятую, known_releases() в collect_releases.py умеет их разбирать
+    release_key = ','.join(sorted(context.user_data.get('selected_releases', [])))
 
-    # Save media files to disk
     if media:
-        import os
-        from pathlib import Path
         media_dir = Path(Config.SITE_DIR) / 'media'
         media_dir.mkdir(parents=True, exist_ok=True)
 
@@ -484,30 +492,29 @@ async def publish_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['media'] = media
 
     try:
-        page_url = await publish_to_site(
+        await publish_to_site(
             md_content, selected_tasks, release_date,
             generated_tasks=context.user_data.get("generated_tasks", {}),
-            media=media
+            media=media,
+            status='draft',
+            release=release_key,
         )
-        await publish_to_channel(
-            context.bot,
-            Config.TG_CHANNEL_ID,
-            selected_tasks,
-            release_date,
-            page_url
+        await notify_draft(
+            context.bot, Config.TG_DRAFT_CHAT_ID,
+            release_key, f"Ручная публикация ({len(selected_tasks)} фич)",
+            selected_tasks, release_date,
         )
 
         await query.message.reply_text(
-            f"✅ *Release Notes опубликованы!*\n\n"
-            f"🌐 Страница: {page_url}\n"
-            f"📢 Пост отправлен в канал",
+            "✅ *Черновик готов и отправлен в админку!*\n\n"
+            "Проверьте карточки и опубликуйте их там, когда всё будет готово.",
             parse_mode='Markdown'
         )
         return ConversationHandler.END
 
     except Exception as e:
         logger.error(f"Error publishing: {e}")
-        await query.message.reply_text(f"❌ Ошибка публикации: {str(e)}")
+        await query.message.reply_text(f"❌ Ошибка: {str(e)}")
         return ConversationHandler.END
 
 

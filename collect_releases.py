@@ -40,12 +40,22 @@ DAYS = 7
 
 
 def known_releases() -> set:
-    """Ключи релизов, которые уже лежат в данных сайта"""
+    """
+    Ключи релизов, которые уже лежат в данных сайта.
+
+    Ручная публикация из бота может объединить несколько релизов в одну
+    запись — 'release' тогда хранит их через запятую. Разбираем её,
+    иначе объединённая запись не защитит входящие в неё релизы от
+    повторного сбора.
+    """
     if not Path(DATA_FILE).exists():
         return set()
     with open(DATA_FILE, encoding='utf-8') as f:
         entries = json.load(f)
-    return {e.get('release') for e in entries if e.get('release')}
+    known = set()
+    for e in entries:
+        known.update(k for k in (e.get('release') or '').split(',') if k)
+    return known
 
 
 async def collect() -> int:

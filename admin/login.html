@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вход · Админка</title>
+<link rel="stylesheet" href="/admin/assets/app.css">
+</head>
+<body class="login-body">
+  <form class="login-card" id="loginForm">
+    <div class="login-logo">Release Notes</div>
+    <div class="login-sub">Вход в админку</div>
+    <input type="password" id="password" class="login-input" placeholder="Пароль" autofocus autocomplete="current-password">
+    <button type="submit" class="btn btn-brand login-btn">Войти</button>
+    <div class="login-error" id="loginError"></div>
+  </form>
+
+<script>
+const form = document.getElementById('loginForm');
+const err = document.getElementById('loginError');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  err.textContent = '';
+  const password = document.getElementById('password').value;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/admin/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password}),
+    });
+    if (res.ok) {
+      window.location.href = '/admin/';
+      return;
+    }
+    if (res.status === 429) {
+      err.textContent = 'Слишком много попыток. Подождите несколько минут.';
+    } else {
+      err.textContent = 'Неверный пароль';
+    }
+  } catch (e) {
+    err.textContent = 'Не удалось связаться с сервером';
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

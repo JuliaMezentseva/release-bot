@@ -12,6 +12,7 @@
   --t1:#0f1923;--t2:#4a5568;--t3:#a0aab8;
   --tag-p-bg:#e8f0fe;--tag-p-t:#1a5fa8;
   --tag-j-bg:#fce8d8;--tag-j-t:#9a4500;
+  --brand:#ffcc00;--brand-ink:#16171a;
   --w:224px;--r:10px;--f:'Geologica',sans-serif
 }
 body{font-family:var(--f);background:var(--bg);color:var(--t1);display:flex;min-height:100vh;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -45,13 +46,13 @@ aside::-webkit-scrollbar{width:0}
 .client-search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none}
 main{flex:1;padding:36px 48px;max-width:900px}
 .pt{font-size:26px;font-weight:700;color:var(--t1);letter-spacing:-.025em;margin-bottom:22px}
-.controls{display:flex;align-items:center;margin-bottom:24px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 16px}
-.ctrl-group{display:flex;align-items:center;gap:6px}
+.controls{display:flex;align-items:center;flex-wrap:wrap;row-gap:10px;margin-bottom:24px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 16px}
+.ctrl-group{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .ctrl-label{font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;margin-right:4px}
 .ctrl-sep{width:1px;height:20px;background:var(--border);margin:0 14px}
 .ctrl-right{margin-left:auto}
 .seg{display:inline-flex;background:var(--active);border-radius:8px;padding:3px;gap:2px}
-.sb{padding:5px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--f);background:transparent;color:var(--t2);transition:all .15s;display:flex;align-items:center;gap:6px}
+.sb{padding:5px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--f);background:transparent;color:var(--t2);transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .sb:hover{color:var(--t1)}
 .sb.on{background:#111827;color:#fff;font-weight:600;box-shadow:none}
 .tdot{width:6px;height:6px;border-radius:50%;display:inline-block}
@@ -62,14 +63,25 @@ main{flex:1;padding:36px 48px;max-width:900px}
 /* ── Карточки — оригинальный стиль сайта, без стрелок ── */
 .card{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;transition:box-shadow .15s}
 .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
-.chd{display:flex;align-items:center;padding:13px 20px;user-select:none}
+.chd{display:flex;align-items:center;gap:10px;padding:13px 20px;user-select:none}
 .cttl{font-size:16px;font-weight:600;color:var(--t1);flex:1;letter-spacing:-.01em}
+.card-select{display:none;width:16px;height:16px;accent-color:var(--t1);cursor:pointer;flex-shrink:0}
+body.selecting .card-select{display:block}
+.favbtn{background:none;border:none;padding:2px;color:var(--t3);cursor:pointer;display:flex;flex-shrink:0;transition:color .12s}
+.favbtn:hover{color:#c99400}
+.favbtn.on{color:var(--brand)}
+.favbtn.on svg{fill:currentColor}
 .cbody{display:block;padding:0}
 .card-head{padding:11px 20px;border-bottom:1px solid var(--border);background:#fff}
 .card-inner{padding:12px 20px 14px}
 .bvl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin-bottom:3px}
 .bvt{font-size:13px;color:var(--t2);font-weight:500;line-height:1.5}
-.media{background:var(--hover);border:1px dashed var(--border);border-radius:6px;height:160px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:var(--t3);font-size:12px}
+.media{margin-bottom:10px}
+.media img,.media video{border-radius:6px;background:var(--hover);display:block}
+.media:not(.gallery){height:160px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.media:not(.gallery) img,.media:not(.gallery) video{max-width:100%;max-height:100%;object-fit:contain}
+.media.gallery{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.media.gallery img,.media.gallery video{height:160px;width:auto;object-fit:cover;flex-shrink:0}
 .media.empty{display:none}
 .cdesc{font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:10px}
 .cfoot{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -80,7 +92,45 @@ main{flex:1;padding:36px 48px;max-width:900px}
 .ttype.proj{background:var(--tag-j-bg);color:var(--tag-j-t)}
 .tlink{margin-left:auto;font-size:12px;color:var(--t3);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:3px}
 .tlink:hover{color:var(--t1)}
+.demobtn{font-family:var(--f);font-size:12px;font-weight:600;color:var(--brand-ink);background:var(--brand);border:none;border-radius:20px;padding:5px 14px;cursor:pointer;transition:filter .12s}
+.demobtn:hover{filter:brightness(.94)}
+.sb.brand-on.on{background:var(--brand);color:var(--brand-ink)}
 .ccol{display:none;padding:0 20px 12px}
+
+/* ── Плавающая панель множественного выбора ── */
+#bulkBar{position:fixed;left:50%;bottom:24px;transform:translate(-50%,80px);background:var(--t1);color:#fff;border-radius:12px;padding:12px 14px 12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 12px 32px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:all .2s;z-index:40}
+#bulkBar.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+#bulkBar .cnt{font-size:13px;font-weight:600}
+#bulkBar button{font-family:var(--f);font-size:13px;font-weight:600;border:none;border-radius:8px;padding:8px 16px;cursor:pointer}
+#bulkBar .go{background:var(--brand);color:var(--brand-ink)}
+#bulkBar .cancel{background:transparent;color:#fff;opacity:.7}
+#bulkBar .cancel:hover{opacity:1}
+
+/* ── Модалка запроса демо ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,25,35,.5);align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-card{background:#fff;border-radius:14px;padding:26px;width:420px;max-width:100%;max-height:88vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--t2);margin-bottom:14px}
+.modal-features{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.modal-feature{font-size:11px;background:var(--active);color:var(--t2);padding:4px 10px;border-radius:14px;font-weight:500;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modal-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--t2);margin:14px 0 6px}
+.modal-input{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:var(--f);font-size:13px;color:var(--t1);background:var(--bg)}
+.modal-input:focus{outline:none;border-color:#1a5fa8}
+.slots{display:flex;flex-wrap:wrap;gap:6px}
+.slot-chip{font-size:12px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--t2);cursor:pointer;user-select:none;transition:all .12s}
+.slot-chip:hover{border-color:var(--t3)}
+.slot-chip.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:600}
+.modal-actions{display:flex;align-items:center;gap:10px;margin-top:20px}
+.modal-submit{flex:1;background:var(--brand);color:var(--brand-ink);border:none;border-radius:8px;padding:11px;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer}
+.modal-submit:disabled{opacity:.6;cursor:default}
+.modal-cancel{background:none;border:none;color:var(--t2);font-family:var(--f);font-size:13px;cursor:pointer;padding:8px}
+.modal-msg{font-size:12px;margin-top:10px;min-height:16px}
+.modal-msg.err{color:#c0392b}
+.modal-msg.ok{color:#1a7a3c}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1}
+.modal-card{position:relative}
+
 @media(max-width:700px){aside{display:none}main{padding:20px 16px}}
 </style>
 </head>
@@ -135,15 +185,54 @@ main{flex:1;padding:36px 48px;max-width:900px}
         <button class="sb" onclick="sv('col',this)">Свёрнутый</button>
       </div>
     </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group">
+      <button class="sb brand-on" id="favToggleBtn" onclick="toggleFavView(this)">★ Избранное (<span id="favCount">0</span>)</button>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group">
+      <button class="sb brand-on" id="selectModeBtn" onclick="toggleSelectMode(this)">☑ Выбрать для демо</button>
+    </div>
   </div>
 
   <!-- CARDS_PLACEHOLDER -->
 
 </main>
 
+<div id="bulkBar">
+  <span class="cnt"><span id="bulkCount">0</span> выбрано</span>
+  <button class="go" onclick="openDemoModal(getSelectedIds())">Запросить демо</button>
+  <button class="cancel" onclick="toggleSelectMode(document.getElementById('selectModeBtn'))">Отмена</button>
+</div>
+
+<div class="modal-overlay" id="demoModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeDemoModal()">✕</button>
+    <div class="modal-title">Запросить демо</div>
+    <div class="modal-sub">Расскажем и покажем эти фичи в удобное время</div>
+    <div class="modal-features" id="modalFeatures"></div>
+
+    <div class="modal-label">Компания</div>
+    <input class="modal-input" id="demoCompany" placeholder="Название компании">
+
+    <div class="modal-label">Рабочая почта</div>
+    <input class="modal-input" id="demoEmail" type="email" placeholder="name@company.ru">
+
+    <div class="modal-label">Удобное время</div>
+    <div class="slots" id="demoSlots"></div>
+
+    <div class="modal-actions">
+      <button class="modal-submit" id="demoSubmit" onclick="submitDemoRequest()">Отправить заявку</button>
+      <button class="modal-cancel" onclick="closeDemoModal()">Отмена</button>
+    </div>
+    <div class="modal-msg" id="demoMsg"></div>
+  </div>
+</div>
+
 <script>
-let v='exp', curProduct='ld', curType='all';
+let v='exp', curProduct='ld', curType='all', favOnly=false, selecting=false;
 const curMods=new Set();
+const FAVS=loadFavs();
 
 function applyFilters(){
   document.querySelectorAll('.card').forEach(c=>{
@@ -151,8 +240,157 @@ function applyFilters(){
     const prodOk=curProduct==='all'||c.dataset.product===curProduct;
     const mods=(c.dataset.mod||'').split(' ').filter(Boolean);
     const modOk=curMods.size===0||mods.some(m=>curMods.has(m));
-    c.style.display=(typeOk&&prodOk&&modOk)?'':'none';
+    const favOk=!favOnly||FAVS.has(c.dataset.id);
+    c.style.display=(typeOk&&prodOk&&modOk&&favOk)?'':'none';
   });
+}
+
+// ── Избранное — хранится в localStorage, без бэкенда: у читателей сайта нет аккаунтов ──
+const FAV_KEY='ld_digest_favorites';
+function loadFavs(){
+  try{ return new Set(JSON.parse(localStorage.getItem(FAV_KEY)||'[]')); }
+  catch(e){ return new Set(); }
+}
+function saveFavs(){ localStorage.setItem(FAV_KEY, JSON.stringify([...FAVS])); }
+function updateFavCount(){ document.getElementById('favCount').textContent=FAVS.size; }
+
+function toggleFav(id,btn){
+  if(FAVS.has(id)) FAVS.delete(id); else FAVS.add(id);
+  saveFavs();
+  btn.classList.toggle('on', FAVS.has(id));
+  updateFavCount();
+  if(favOnly) applyFilters();
+}
+
+function toggleFavView(btn){
+  favOnly=!favOnly;
+  btn.classList.toggle('on', favOnly);
+  applyFilters();
+}
+
+function initFavButtons(){
+  document.querySelectorAll('.favbtn').forEach(btn=>{
+    const card=btn.closest('.card');
+    if(card && FAVS.has(card.dataset.id)) btn.classList.add('on');
+  });
+  updateFavCount();
+}
+
+// ── Выбор нескольких карточек для общего запроса демо ──
+function toggleSelectMode(btn){
+  selecting=!selecting;
+  document.body.classList.toggle('selecting', selecting);
+  btn.classList.toggle('on', selecting);
+  if(!selecting){
+    document.querySelectorAll('.card-select:checked').forEach(cb=>cb.checked=false);
+  }
+  updateBulkBar();
+}
+
+function getSelectedIds(){
+  return [...document.querySelectorAll('.card-select:checked')].map(cb=>cb.dataset.id);
+}
+
+function updateBulkBar(){
+  const n=getSelectedIds().length;
+  document.getElementById('bulkCount').textContent=n;
+  document.getElementById('bulkBar').classList.toggle('show', selecting&&n>0);
+}
+
+document.addEventListener('change', e=>{
+  if(e.target.classList && e.target.classList.contains('card-select')) updateBulkBar();
+});
+
+// ── Запрос демо ──
+function cardTitle(id){
+  const card=document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+  return card ? card.querySelector('.cttl').textContent : id;
+}
+
+function requestDemo(id){ openDemoModal([id]); }
+
+function openDemoModal(ids){
+  if(!ids || !ids.length) return;
+  window._demoIds=ids;
+  const box=document.getElementById('modalFeatures');
+  box.innerHTML='';
+  ids.forEach(id=>{
+    const chip=document.createElement('span');
+    chip.className='modal-feature';
+    chip.textContent=cardTitle(id);
+    chip.title=chip.textContent;
+    box.appendChild(chip);
+  });
+  buildSlots();
+  document.getElementById('demoCompany').value='';
+  document.getElementById('demoEmail').value='';
+  const msg=document.getElementById('demoMsg');
+  msg.textContent=''; msg.className='modal-msg';
+  document.getElementById('demoModal').classList.add('show');
+}
+
+function closeDemoModal(){
+  document.getElementById('demoModal').classList.remove('show');
+}
+
+document.getElementById('demoModal').addEventListener('click', e=>{
+  if(e.target.id==='demoModal') closeDemoModal();
+});
+
+function buildSlots(){
+  const box=document.getElementById('demoSlots');
+  box.innerHTML='';
+  const dayNames=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const times=['10:00','13:00','16:00'];
+  const d=new Date();
+  let added=0;
+  while(added<5){
+    d.setDate(d.getDate()+1);
+    const dow=d.getDay();
+    if(dow===0||dow===6) continue;
+    const label=`${dayNames[dow]} ${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+    times.forEach(t=>{
+      const chip=document.createElement('span');
+      chip.className='slot-chip';
+      chip.textContent=`${label}, ${t}`;
+      chip.onclick=()=>chip.classList.toggle('on');
+      box.appendChild(chip);
+    });
+    added++;
+  }
+}
+
+async function submitDemoRequest(){
+  const company=document.getElementById('demoCompany').value.trim();
+  const email=document.getElementById('demoEmail').value.trim();
+  const slots=[...document.querySelectorAll('.slot-chip.on')].map(s=>s.textContent);
+  const msg=document.getElementById('demoMsg');
+  const btn=document.getElementById('demoSubmit');
+
+  if(!company){ msg.textContent='Укажите компанию'; msg.className='modal-msg err'; return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.textContent='Проверьте почту'; msg.className='modal-msg err'; return; }
+
+  const cards=(window._demoIds||[]).map(id=>({id, title: cardTitle(id)}));
+
+  btn.disabled=true;
+  msg.textContent='Отправляем…'; msg.className='modal-msg';
+  try{
+    const res=await fetch('/webhook/demo-request', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({company, email, cards, slots})
+    });
+    if(!res.ok){
+      const d=await res.json().catch(()=>({}));
+      throw new Error(d.detail || 'Не получилось отправить');
+    }
+    msg.textContent='Заявка отправлена — мы свяжемся с вами!'; msg.className='modal-msg ok';
+    setTimeout(closeDemoModal, 1800);
+    if(selecting) toggleSelectMode(document.getElementById('selectModeBtn'));
+  }catch(e){
+    msg.textContent=e.message; msg.className='modal-msg err';
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 // Модули: ни одного выбранного = показываем все, иначе объединение выбранных
@@ -216,6 +454,8 @@ function sm(r){document.querySelectorAll('.mrow').forEach(x=>x.classList.remove(
 function sr(el){document.querySelectorAll('.rs-item').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
 function filterClients(val){document.querySelectorAll('.client-item').forEach(row=>{row.style.display=row.textContent.toLowerCase().includes(val.toLowerCase())?'':'none';});}
 function selectClient(client,el){document.querySelectorAll('#client-all,.client-item').forEach(r=>r.classList.remove('on'));el.classList.add('on');}
+
+initFavButtons();
 
 // Check URL param for product
 const urlParams = new URLSearchParams(window.location.search);

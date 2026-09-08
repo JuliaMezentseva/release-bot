@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка · Release Notes</title>
+<link rel="stylesheet" href="/admin/assets/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-title">Release Notes</div>
+  <button class="btn btn-ghost" id="logoutBtn">Выйти</button>
+</header>
+
+<div class="tabs">
+  <button class="tab on" id="tabDraft" onclick="switchTab('draft')">
+    Черновики <span class="tab-badge" id="draftBadge">0</span>
+  </button>
+  <button class="tab" id="tabPublished" onclick="switchTab('published')">Опубликовано</button>
+</div>
+
+<main id="content">
+  <div class="empty-state" id="loading">Загрузка…</div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="/admin/assets/app.js"></script>
+</body>
+</html>

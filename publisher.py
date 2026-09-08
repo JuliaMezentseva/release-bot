@@ -30,12 +30,13 @@ def card_categories(card: dict) -> list:
     """
     Категории карточки — компоненты задачи, они же теги в футере.
 
-    Для карточек, опубликованных до перехода на компоненты, остаётся
-    модуль задачи.
+    У карточек, опубликованных до перехода на компоненты, ключа components
+    нет вовсе — для них категорией остаётся модуль задачи. У новых карточек
+    пустой список означает, что компонентов не проставлено, и подставлять
+    вместо них зонтичный модуль релиза нельзя: он не категория.
     """
-    components = card.get('components') or []
-    if components:
-        return components
+    if 'components' in card:
+        return card['components'] or []
     module = card.get('module') or ''
     return [module] if module else []
 
@@ -143,6 +144,107 @@ def extract_from_md(md_content: str, task_title: str) -> tuple[str, str]:
     return bv, desc
 
 
+# Компоненты в Трекере названы по-английски, сайт русскоязычный. Ключ
+# фильтра строится по исходному имени, а показывается перевод; компонент
+# без перевода выводится как есть, так что новый ничего не ломает.
+CATEGORY_NAMES = {
+    # L&D
+    'LMS': 'Обучение',
+    'Core LMS': 'Ядро LMS',
+    'Assesment LMS': 'Оценка персонала',
+    'Onboarding LMS': 'Адаптация',
+    'Goals': 'Цели и OKR',
+    'L&D Performance Review': 'Управление эффективностью',
+    'Persons': 'Сотрудники',
+    'HCM Core': 'Ядро HCM',
+    'Portal': 'Портал',
+    'Career Product': 'Карьерный сайт',
+    'Career Mass': 'Карьерный сайт (массовый подбор)',
+    'Career Prof': 'Карьерный сайт (проф. подбор)',
+    'Self Services': 'Личный кабинет',
+    # Подбор
+    'AtsCore': 'Ядро ATS',
+    'AtsFramework': 'Платформа ATS',
+    'Assessment': 'Оценка кандидатов',
+    'Sourcing': 'Поиск кандидатов',
+    'MS Sourcing Integrator': 'Интеграции поиска',
+    'Internal recruitment': 'Внутренний подбор',
+    'Telephony': 'Телефония',
+    'Communication': 'Коммуникации',
+    'Feedback Services': 'Обратная связь',
+    'Configurator': 'Конфигуратор',
+    'Reporting': 'Отчёты',
+    'OpenAPI': 'Open API',
+    # Общее
+    'Mobile': 'Мобильное приложение',
+    'Personal Data': 'Персональные данные',
+    'Security Profiles': 'Профили доступа',
+    'Product Analytics': 'Продуктовая аналитика',
+    'Client Task': 'Клиентская доработка',
+    'Task Tracker': 'Задачи',
+    'Audit': 'Аудит',
+    'Auth': 'Авторизация',
+}
+
+
+def category_key(name: str) -> str:
+    """
+    Ключ категории для data-mod и обработчика фильтра.
+
+    Строится по исходному имени компонента, а не по переводу: перевод можно
+    менять, не трогая уже опубликованные карточки. Небуквенные символы
+    схлопываются, иначе ключ вида l&d_performance_review ломает атрибут.
+    Кириллица сохраняется: иначе русские названия схлопывались в одинаковый
+    ключ и разные модули склеивались в один фильтр.
+    """
+    return re.sub(r'\W+', '_', name.lower(), flags=re.UNICODE).strip('_') or 'none'
+
+
+def category_label(name: str) -> str:
+    """Отображаемое имя категории"""
+    return CATEGORY_NAMES.get(name, name)
+
+
+def build_modules_html(releases: list) -> str:
+    """
+    Список модулей сайдбара — из компонентов опубликованных задач.
+
+    data-prod у строки определяет, при каком продукте она видна: категория,
+    встречающаяся у обоих продуктов, помечается all.
+    """
+    from collections import Counter, defaultdict
+
+    counts = Counter()
+    names = {}
+    products = defaultdict(set)
+    total = 0
+
+    for release in releases:
+        for card in release.get('cards', []):
+            total += 1
+            for name in card_categories(card):
+                key = category_key(name)
+                counts[key] += 1
+                names.setdefault(key, category_label(name))
+                products[key].add(card_product(card))
+
+    if not counts:
+        return ''
+
+    html = (f'<label class="nrow on" data-prod="all" id="mod-all">'
+            f'<input type="checkbox" checked onclick="selectModule(\'all\',this.parentElement)">'
+            f' все модули <span class="nnum">{total}</span></label>')
+
+    for key, count in sorted(counts.items(), key=lambda kv: (-kv[1], names[kv[0]])):
+        prods = products[key]
+        prod = prods.pop() if len(prods) == 1 else 'all'
+        html += (f'\n    <label class="nrow mod-item" data-prod="{prod}">'
+                 f'<input type="checkbox" onclick="selectModule(\'{key}\',this.parentElement)">'
+                 f' {names[key]} <span class="nnum">{count}</span></label>')
+
+    return html
+
+
 def rebuild_html(releases: list):
     template_path = SITE_DIR / "digest_template.html"
     if not template_path.exists():
@@ -151,8 +253,10 @@ def rebuild_html(releases: list):
         template = f.read()
     cards_html = build_cards_html(releases)
     sidebar_html = build_sidebar_html(releases)
+    modules_html = build_modules_html(releases)
     html = template.replace('<!-- CARDS_PLACEHOLDER -->', cards_html)
     html = html.replace('<!-- SIDEBAR_PLACEHOLDER -->', sidebar_html)
+    html = html.replace('<!-- MODULES_PLACEHOLDER -->', modules_html)
     output_path = SITE_DIR / "index.html"
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -200,11 +304,9 @@ def build_cards_html(releases: list) -> str:
 
             categories = card_categories(card)
             mods_html = ''.join(
-                f'<span class="tmod">{c}</span>' for c in categories
+                f'<span class="tmod">{category_label(c)}</span>' for c in categories
             )
-            mods_key = ' '.join(
-                c.lower().replace(' ', '_') for c in categories
-            ) or 'none'
+            mods_key = ' '.join(category_key(c) for c in categories) or 'none'
             prod_key = card_product(card)
 
             # Build media HTML

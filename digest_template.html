@@ -96,18 +96,7 @@ main{flex:1;padding:36px 48px;max-width:900px}
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Модули</div>
-    <label class="nrow on" data-prod="all"><input type="checkbox" checked> все модули <span class="nnum">12</span></label>
-    <label class="nrow" data-prod="ld"><input type="checkbox"> Управление эффективностью <span class="nnum">3</span></label>
-    <label class="nrow" data-prod="ld"><input type="checkbox"> Карьера <span class="nnum">2</span></label>
-    <label class="nrow" data-prod="ld"><input type="checkbox"> Core <span class="nnum">2</span></label>
-    <label class="nrow" data-prod="ld"><input type="checkbox"> Обучение <span class="nnum">2</span></label>
-    <label class="nrow" data-prod="ld"><input type="checkbox"> Оценка 360 <span class="nnum">1</span></label>
-    <label class="nrow" data-prod="ld"><input type="checkbox"> Цели и OKR <span class="nnum">2</span></label>
-    <label class="nrow" data-prod="podbor"><input type="checkbox"> ATS Core <span class="nnum">4</span></label>
-    <label class="nrow" data-prod="podbor"><input type="checkbox"> Телефония <span class="nnum">2</span></label>
-    <label class="nrow" data-prod="podbor"><input type="checkbox"> Отчёты <span class="nnum">3</span></label>
-    <label class="nrow" data-prod="podbor"><input type="checkbox"> Конфигуратор <span class="nnum">1</span></label>
-    <label class="nrow" data-prod="podbor"><input type="checkbox"> Open API <span class="nnum">2</span></label>
+    <!-- MODULES_PLACEHOLDER -->
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">Период</div>
@@ -154,13 +143,37 @@ main{flex:1;padding:36px 48px;max-width:900px}
 
 <script>
 let v='exp', curProduct='ld', curType='all';
+const curMods=new Set();
 
 function applyFilters(){
   document.querySelectorAll('.card').forEach(c=>{
     const typeOk=curType==='all'||c.dataset.type===curType;
     const prodOk=curProduct==='all'||c.dataset.product===curProduct;
-    c.style.display=(typeOk&&prodOk)?'':'none';
+    const mods=(c.dataset.mod||'').split(' ').filter(Boolean);
+    const modOk=curMods.size===0||mods.some(m=>curMods.has(m));
+    c.style.display=(typeOk&&prodOk&&modOk)?'':'none';
   });
+}
+
+// Модули: ни одного выбранного = показываем все, иначе объединение выбранных
+function selectModule(key,el){
+  if(key==='all'){
+    curMods.clear();
+    document.querySelectorAll('.mod-item').forEach(r=>{
+      r.classList.remove('on');
+      const cb=r.querySelector('input'); if(cb)cb.checked=false;
+    });
+  }else{
+    if(curMods.has(key)){curMods.delete(key);el.classList.remove('on');}
+    else{curMods.add(key);el.classList.add('on');}
+  }
+  const all=document.getElementById('mod-all');
+  if(all){
+    const none=curMods.size===0;
+    all.classList.toggle('on',none);
+    const cb=all.querySelector('input'); if(cb)cb.checked=none;
+  }
+  applyFilters();
 }
 
 function sp(product,btn){
@@ -174,6 +187,9 @@ function sp(product,btn){
     const rp=row.dataset.prod;
     row.style.display=(rp==='all'||product==='all'||rp===product)?'':'none';
   });
+  // Модули у продуктов разные, иначе выбор из другого продукта всё спрячет
+  const allRow=document.getElementById('mod-all');
+  if(allRow)selectModule('all',allRow);
   applyFilters();
 }
 

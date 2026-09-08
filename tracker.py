@@ -5,7 +5,7 @@ Yandex Tracker API v3 client.
 Точно известно (подтверждено на рабочем сервере):
   - BASE_URL, заголовки (X-Org-ID для Яндекс 360, не X-Cloud-Org-Id)
   - фильтр релизов: {"filter": {"queue": "DEV", "type": "release"}}
-  - исключаются задачи с тегом Tech и типами Ошибка / Ошибка с прода / Релиз
+  - в дайджест идут только задачи типа Story без тега Tech
   - module читается напрямую из issue['module']
   - project имеет структуру {"primary": {"display": "..."}, "secondary": [...]}
   - Product Development -> type=product, иначе project
@@ -206,14 +206,16 @@ async def get_release_tasks(release_id: str, release_date: str | None = None,
             if 'Tech🔧' in tag_names:
                 continue
 
-            # Пропускаем баги и сами релизы
+            # В дайджест идут только Story. Белый список вместо перечисления
+            # нежелательных типов: кроме багов и самих релизов, к релизу
+            # цепляются Задача, Epic и Запрос — они тоже не фичи.
             issue_type = ''
             type_field = issue.get('type', {})
             if isinstance(type_field, dict):
                 issue_type = type_field.get('display', '') or type_field.get('name', '')
             elif isinstance(type_field, str):
                 issue_type = type_field
-            if issue_type in ['Ошибка', 'Ошибка с прода', 'Релиз', 'Release']:
+            if issue_type != 'Story':
                 continue
 
             module = issue.get('module', '') or ''

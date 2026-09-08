@@ -1,0 +1,10 @@
+[Unit]
+Description=L&D Release Notes — ежедневный сбор черновиков
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=julia
+WorkingDirectory=/opt/ld_bot
+EnvironmentFile=/opt/ld_bot/config.env
+ExecStart=/opt/ld_bot/venv/bin/python collect_releases.py

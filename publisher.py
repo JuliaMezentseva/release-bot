@@ -57,8 +57,16 @@ def date_sort_key(date_str: str) -> datetime:
         return datetime.min
 
 
-async def publish_to_site(md_content: str, tasks: list, release_date: str, generated_tasks: dict = {}, media: dict = {}) -> str:
-    """Parse MD content and update the digest HTML page"""
+async def publish_to_site(md_content: str, tasks: list, release_date: str, generated_tasks: dict = {},
+                          media: dict = {}, status: str = 'published', release: str = '') -> str:
+    """
+    Parse MD content and update the digest HTML page.
+
+    status: 'published' — карточки видны на сайте; 'draft' — лежат в
+    releases_data.json, но в HTML не попадают, пока их не опубликуют.
+    release: ключ релиза в Трекере, по нему ежедневный сбор понимает,
+    что релиз уже забран.
+    """
 
     if DATA_FILE.exists():
         with open(DATA_FILE, 'r', encoding='utf-8') as f:
@@ -92,15 +100,23 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
         by_date.setdefault(card_date, []).append(card)
 
     for card_date in sorted(by_date, key=date_sort_key):
-        existing = next(
-            (r for r in all_releases if r.get('date') == card_date), None
-        )
+        # Черновик всегда отдельной записью: иначе он подмешался бы к уже
+        # опубликованным карточкам той же даты и утёк бы на сайт
+        existing = None
+        if status == 'published':
+            existing = next(
+                (r for r in all_releases
+                 if r.get('date') == card_date
+                 and r.get('status', 'published') == 'published'), None
+            )
         if existing:
             existing['cards'].extend(by_date[card_date])
         else:
             all_releases.insert(0, {
                 'date': card_date,
                 'date_ru': format_date_ru(card_date),
+                'status': status,
+                'release': release,
                 'cards': by_date[card_date],
             })
 
@@ -251,6 +267,9 @@ def rebuild_html(releases: list):
         raise FileNotFoundError(f"Template not found at {template_path}")
     with open(template_path, 'r', encoding='utf-8') as f:
         template = f.read()
+    # Записи без status — опубликованные: поле появилось позже них
+    releases = [r for r in releases if r.get('status', 'published') == 'published']
+
     cards_html = build_cards_html(releases)
     sidebar_html = build_sidebar_html(releases)
     modules_html = build_modules_html(releases)

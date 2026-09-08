@@ -14,7 +14,7 @@ Yandex Tracker API v3 client.
 Released (ключ статуса — closed), даты из названий не разбираются.
 """
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import aiohttp
 
@@ -76,13 +76,18 @@ def product_from_module(module: str) -> str | None:
     return MODULE_PRODUCTS.get((module or '').strip())
 
 
+# Трекер отдаёт время в UTC, команда живёт по Москве: релиз, закрытый
+# ночью по МСК, иначе датировался бы предыдущим днём
+MSK = timezone(timedelta(hours=3))
+
+
 def parse_tracker_datetime(value: str):
-    """Разобрать дату Трекера вида 2026-08-24T11:22:21.688+0000"""
+    """Разобрать дату Трекера вида 2026-08-24T11:22:21.688+0000 в МСК"""
     if not value:
         return None
     for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S%z'):
         try:
-            return datetime.strptime(value, fmt)
+            return datetime.strptime(value, fmt).astimezone(MSK)
         except ValueError:
             continue
     return None
@@ -108,7 +113,7 @@ async def get_releases(product: str = 'ld', days: int = 30) -> list:
 
     product: 'ld' | 'podbor' — фильтрация по полю module самого релиза.
     """
-    since = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    since = (datetime.now(MSK) - timedelta(days=days)).strftime('%Y-%m-%d')
     payload = {"filter": {
         "queue": "DEV",
         "type": "release",

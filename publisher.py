@@ -26,6 +26,22 @@ def format_date_ru(date_str: str) -> str:
         return date_str
 
 
+def card_product(card: dict) -> str:
+    """Продукт карточки: берётся с релиза, иначе по модулю задачи"""
+    product = card.get('product')
+    if product in ('ld', 'podbor'):
+        return product
+    return 'ld' if 'L&D' in (card.get('module') or '') else 'podbor'
+
+
+def date_sort_key(date_str: str) -> datetime:
+    """Ключ сортировки для даты ДД.ММ.ГГГГ; неразобранное уходит вниз"""
+    try:
+        return datetime.strptime(date_str, '%d.%m.%Y')
+    except Exception:
+        return datetime.min
+
+
 async def publish_to_site(md_content: str, tasks: list, release_date: str, generated_tasks: dict = {}, media: dict = {}) -> str:
     """Parse MD content and update the digest HTML page"""
 
@@ -35,10 +51,14 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
     else:
         all_releases = []
 
+    # Задача несёт дату своего релиза, поэтому одна публикация может лечь
+    # под несколько дат: задачи разных релизов не должны слипаться в одну.
     cards = []
+    by_date = {}
     for task in tasks:
         gen = generated_tasks.get(task['id'], {})
         task_media = media.get(task['id'], [])
+        card_date = task.get('release_date') or release_date
         card = {
             'id': task['id'],
             'title': gen.get('name', task['title']),
@@ -46,20 +66,29 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
             'module': task.get('module', ''),
             'type': task['type'],
             'client': task.get('client'),
-            'date': release_date,
+            'product': task.get('product'),
+            'date': card_date,
             'business_value': gen.get('business_value', ''),
             'description': gen.get('description', ''),
             'media': task_media,
         }
         cards.append(card)
+        by_date.setdefault(card_date, []).append(card)
 
-    release_entry = {
-        'date': release_date,
-        'date_ru': format_date_ru(release_date),
-        'cards': cards
-    }
+    for card_date in sorted(by_date, key=date_sort_key):
+        existing = next(
+            (r for r in all_releases if r.get('date') == card_date), None
+        )
+        if existing:
+            existing['cards'].extend(by_date[card_date])
+        else:
+            all_releases.insert(0, {
+                'date': card_date,
+                'date_ru': format_date_ru(card_date),
+                'cards': by_date[card_date],
+            })
 
-    all_releases.insert(0, release_entry)
+    all_releases.sort(key=lambda r: date_sort_key(r.get('date', '')), reverse=True)
 
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
@@ -70,13 +99,11 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
     # Determine product from cards
     prod_key = 'ld'
     if cards:
-        modules = [c.get('module','') for c in cards]
-        ld_count = sum(1 for m in modules if 'L&D' in m)
-        podbor_count = sum(1 for m in modules if 'L&D' not in m)
+        products = [card_product(c) for c in cards]
+        ld_count = products.count('ld')
+        podbor_count = products.count('podbor')
         if podbor_count > ld_count:
             prod_key = 'podbor'
-        elif ld_count > 0:
-            prod_key = 'ld'
 
     page_url = f"{Config.SITE_URL}?product={prod_key}"
     return page_url
@@ -155,7 +182,7 @@ def build_cards_html(releases: list) -> str:
             type_label = 'Продукт' if card['type'] == 'product' else 'Проект'
 
             client_key = (card.get('client') or '').lower().replace(' ', '_').replace('ё', 'e') or 'none'
-            prod_key = 'ld' if 'L&D' in (card.get('module') or '') else 'podbor'
+            prod_key = card_product(card)
 
             # Build media HTML
             card_media = card.get('media', [])
@@ -240,7 +267,7 @@ def build_sidebar_html(releases: list) -> str:
     <div class="mlist" id="y{year}">'''
 
         for month in sorted(by_year[year].keys(), reverse=True):
-            dates = sorted(by_year[year][month], reverse=True)
+            dates = sorted(set(by_year[year][month]), key=date_sort_key, reverse=True)
             month_name = months_ru.get(month, month)
             count = len(dates)
             html += f'''

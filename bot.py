@@ -68,9 +68,10 @@ async def show_releases(query, context):
     keyboard = []
     for r in releases:
         check = "✅" if r['id'] in selected else "⬜"
+        label = f"{check} {r['date_str']} · {r['title']}" if r.get('date_str') else f"{check} {r['title']}"
         keyboard.append([
             InlineKeyboardButton(
-                f"{check} {r['title']}",
+                label,
                 callback_data=f"toggle_release:{r['id']}"
             )
         ])
@@ -121,7 +122,11 @@ async def confirm_releases(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         all_tasks = []
         for release in selected_releases:
-            tasks = await get_release_tasks(release['id'])
+            tasks = await get_release_tasks(
+                release['id'],
+                release_date=release.get('date_str'),
+                product=release.get('product'),
+            )
             all_tasks.extend(tasks)
 
         if not all_tasks:

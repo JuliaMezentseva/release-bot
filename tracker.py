@@ -9,8 +9,9 @@ Yandex Tracker API v3 client.
   - module читается напрямую из issue['module']
   - project имеет структуру {"primary": {"display": "..."}, "secondary": [...]}
   - Product Development -> type=product, иначе project
-Функции extract_section / get_client_from_project / parse_date_from_title
-и фильтрация по продукту в get_releases восстановлены по смыслу — сверить.
+Функции extract_section / get_client_from_project восстановлены по смыслу.
+Дата релиза берётся из statusStartTime задачи типа release в статусе
+Released (ключ статуса — closed), даты из названий не разбираются.
 """
 import re
 from datetime import datetime, timedelta
@@ -49,14 +50,41 @@ def get_client_from_project(project_name: str) -> str | None:
     return None
 
 
-def parse_date_from_title(title: str):
-    """Достать дату из названия релиза вида '... 2026-04-20 ...'"""
-    match = re.search(r'(\d{4}-\d{2}-\d{2})', title or '')
-    if match:
+# Статус, отображаемый в очереди DEV как Released, имеет ключ closed
+RELEASED_STATUS_KEY = 'closed'
+RELEASED_DISPLAYS = ('Released', 'Выпущен')
+
+
+# Продукт определяется полем module самого релиза: оно заполнено у всех
+# релизов, тогда как у задач бывает пустым или коротким (Карьера, Обучение),
+# из-за чего классификация по модулям задач промахивалась.
+# Список закрытый: модули вне его в дайджест не идут.
+MODULE_PRODUCTS = {
+    'Подбор': 'podbor',
+    'L&D (Цели, Карьера, Профиль, Оргструктура)': 'ld',
+    'L&D (Обучение, Оценка, Адаптация, ИПР)': 'ld',
+}
+
+
+def product_from_module(module: str) -> str | None:
+    """
+    Продукт по модулю релиза: 'ld' | 'podbor'.
+
+    None для всех остальных модулей — Карьера, Платформа (микросервисы),
+    Внутренние сервисы: такие релизы в дайджест не попадают.
+    """
+    return MODULE_PRODUCTS.get((module or '').strip())
+
+
+def parse_tracker_datetime(value: str):
+    """Разобрать дату Трекера вида 2026-08-24T11:22:21.688+0000"""
+    if not value:
+        return None
+    for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S%z'):
         try:
-            return datetime.strptime(match.group(1), '%Y-%m-%d')
+            return datetime.strptime(value, fmt)
         except ValueError:
-            return None
+            continue
     return None
 
 
@@ -71,14 +99,26 @@ def extract_section(description: str, section_name: str) -> str:
 
 async def get_releases(product: str = 'ld', days: int = 30) -> list:
     """
-    Получить релизы из очереди DEV за последние N дней.
-    product: 'ld' | 'podbor' — фильтрация по полю module связанных задач.
+    Получить выпущенные релизы очереди DEV за последние N дней.
+
+    Релиз — задача типа release в статусе Released. Дата берётся из
+    statusStartTime, то есть из момента перевода в этот статус: даты в
+    названиях релизов проставляются кем как и часть из них не разбирается.
+    Релизы без перехода в Released не возвращаются.
+
+    product: 'ld' | 'podbor' — фильтрация по полю module самого релиза.
     """
-    payload = {"filter": {"queue": "DEV", "type": "release"}}
+    since = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    payload = {"filter": {
+        "queue": "DEV",
+        "type": "release",
+        "status": RELEASED_STATUS_KEY,
+        "statusStartTime": {"from": since},
+    }}
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
-            f"{BASE_URL}/issues/_search?perPage=50",
+            f"{BASE_URL}/issues/_search?perPage=100",
             headers=get_headers(),
             json=payload
         ) as resp:
@@ -87,27 +127,49 @@ async def get_releases(product: str = 'ld', days: int = 30) -> list:
                 raise Exception(f"Tracker API error {resp.status}: {text}")
             issues = await resp.json()
 
-    cutoff = datetime.now() - timedelta(days=days)
     releases = []
 
     for issue in issues:
-        summary = issue.get('summary', '')
-        date = parse_date_from_title(summary)
+        status_field = issue.get('status') or {}
+        if isinstance(status_field, dict):
+            status = status_field.get('display', '') or status_field.get('key', '')
+        else:
+            status = str(status_field)
+        if status and status not in RELEASED_DISPLAYS:
+            continue
 
-        if date and date < cutoff:
+        released_at = parse_tracker_datetime(issue.get('statusStartTime'))
+        if not released_at:
+            continue
+
+        module = issue.get('module', '') or ''
+        release_product = product_from_module(module)
+        if release_product != product:
             continue
 
         releases.append({
             'id': issue['key'],
-            'title': summary,
-            'date': date,
+            'title': issue.get('summary', ''),
+            'date': released_at,
+            'date_str': released_at.strftime('%d.%m.%Y'),
+            'module': module,
+            'product': release_product,
         })
+
+    # Параметр order Трекер для _search игнорирует, сортируем у себя
+    releases.sort(key=lambda r: r['date'], reverse=True)
 
     return releases
 
 
-async def get_release_tasks(release_id: str, release_date: str | None = None) -> list:
-    """Получить задачи, связанные с релизом"""
+async def get_release_tasks(release_id: str, release_date: str | None = None,
+                            product: str | None = None) -> list:
+    """
+    Получить задачи, связанные с релизом.
+
+    product — продукт релиза ('ld' | 'podbor'); проставляется каждой задаче,
+    потому что модуль самой задачи для этого ненадёжен.
+    """
     async with aiohttp.ClientSession() as session:
         async with session.get(
             f"{BASE_URL}/issues/{release_id}/links",
@@ -180,6 +242,7 @@ async def get_release_tasks(release_id: str, release_date: str | None = None) ->
                 'id': issue['id'],
                 'key': key,
                 'release_date': release_date,
+                'product': product,
                 'title': issue.get('summary', ''),
                 'url': f"https://tracker.yandex.ru/{key}",
                 'module': module,

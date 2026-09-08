@@ -26,6 +26,20 @@ def format_date_ru(date_str: str) -> str:
         return date_str
 
 
+def card_categories(card: dict) -> list:
+    """
+    Категории карточки — компоненты задачи, они же теги в футере.
+
+    Для карточек, опубликованных до перехода на компоненты, остаётся
+    модуль задачи.
+    """
+    components = card.get('components') or []
+    if components:
+        return components
+    module = card.get('module') or ''
+    return [module] if module else []
+
+
 def card_product(card: dict) -> str:
     """Продукт карточки: берётся с релиза, иначе по модулю задачи"""
     product = card.get('product')
@@ -64,6 +78,7 @@ async def publish_to_site(md_content: str, tasks: list, release_date: str, gener
             'title': gen.get('name', task['title']),
             'url': task['url'],
             'module': task.get('module', ''),
+            'components': task.get('components') or [],
             'type': task['type'],
             'client': task.get('client'),
             'product': task.get('product'),
@@ -182,6 +197,14 @@ def build_cards_html(releases: list) -> str:
             type_label = 'Продукт' if card['type'] == 'product' else 'Проект'
 
             client_key = (card.get('client') or '').lower().replace(' ', '_').replace('ё', 'e') or 'none'
+
+            categories = card_categories(card)
+            mods_html = ''.join(
+                f'<span class="tmod">{c}</span>' for c in categories
+            )
+            mods_key = ' '.join(
+                c.lower().replace(' ', '_') for c in categories
+            ) or 'none'
             prod_key = card_product(card)
 
             # Build media HTML
@@ -199,7 +222,7 @@ def build_cards_html(releases: list) -> str:
                 media_html = '<div class="media empty"></div>'
 
             cards_inner += f"""
-    <div class="card" data-type="{card['type']}" data-product="{prod_key}" data-client="{client_key}">
+    <div class="card" data-type="{card['type']}" data-product="{prod_key}" data-client="{client_key}" data-mod="{mods_key}">
       <div class="chd"><span class="cttl">{card['title']}</span></div>
       <div class="cbody">
         <div class="card-head">
@@ -210,7 +233,7 @@ def build_cards_html(releases: list) -> str:
           {media_html}
           <div class="cdesc">{card.get('description', '')}</div>
           <div class="cfoot">
-            <span class="tmod">{card.get('module', '')}</span>
+            {mods_html}
             <span class="ttype {type_class}">{type_label}</span>
             {client_tag}
             <a href="{card['url']}" target="_blank" class="tlink">{SVG_LINK}Открыть в ЯТ</a>
@@ -219,7 +242,7 @@ def build_cards_html(releases: list) -> str:
       </div>
       <div class="ccol">
         <div class="cfoot">
-          <span class="tmod">{card.get('module', '')}</span>
+          {mods_html}
           <span class="ttype {type_class}">{type_label}</span>
           {client_tag}
           <a href="{card['url']}" target="_blank" class="tlink">↗ ЯТ</a>

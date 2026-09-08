@@ -218,6 +218,14 @@ async def get_release_tasks(release_id: str, release_date: str | None = None,
 
             module = issue.get('module', '') or ''
 
+            # Категория задачи — компонент: у Story он заполнен почти всегда
+            # (3 пустых из 112), тогда как module пустует в 27 случаях
+            components = []
+            for c in issue.get('components') or []:
+                name = c.get('display') or c.get('name') or '' if isinstance(c, dict) else str(c)
+                if name:
+                    components.append(name)
+
             # project: {"primary": {"display": "..."}, "secondary": [...]}
             project_primary = ''
             project_field = issue.get('project')
@@ -246,6 +254,7 @@ async def get_release_tasks(release_id: str, release_date: str | None = None,
                 'title': issue.get('summary', ''),
                 'url': f"https://tracker.yandex.ru/{key}",
                 'module': module,
+                'components': components,
                 'type': 'product' if is_product else 'project',
                 'client': client,
                 'project': project_primary,
